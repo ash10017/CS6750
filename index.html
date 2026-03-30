@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amazon Prime — Cancellation Flow Redesign</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+
+/* ── RESET & TOKENS ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --az-navy:    #131921;
+  --az-mid:     #232F3E;
+  --az-orange:  #FF9900;
+  --az-gold:    #FFD814;
+  --az-red:     #B12704;
+  --az-red-bg:  #FEF2F2;
+  --az-green:   #067D62;
+  --az-green-bg:#F0FAF6;
+  --az-link:    #007185;
+  --az-border:  #D5D9D9;
+  --az-bg:      #F0F2F2;
+  --az-surface: #FFFFFF;
+  --az-muted:   #6B7280;
+  --az-text:    #0F1111;
+  --prime-blue: #00A8E1;
+  --prime-dark: #002F65;
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.10);
+  --shadow-md:  0 4px 16px rgba(0,0,0,.10);
+  --radius:     8px;
+  --font: 'Outfit', 'Segoe UI', sans-serif;
+}
+
+html { font-size: 15px; }
+body { font-family: var(--font); background: var(--az-bg); color: var(--az-text); line-height: 1.5; }
+button { font-family: var(--font); cursor: pointer; }
+
+/* ── TOPNAV ──────────────────────────────────────────────────────── */
+.topnav {
+  background: var(--az-navy);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  height: 56px;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  font-size: 22px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.logo span { color: var(--az-orange); }
+.logo sub {
+  font-size: 10px;
+  font-weight: 400;
+  color: #aaa;
+  vertical-align: baseline;
+  margin-left: 1px;
+}
+.topnav-search {
+  flex: 1;
+  max-width: 520px;
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.topnav-search input {
+  flex: 1;
+  border: none;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: var(--font);
+  outline: none;
+}
+.topnav-search button {
+  background: var(--az-orange);
+  border: none;
+  padding: 0 14px;
+  font-size: 16px;
+}
+.topnav-search button:hover { background: #e68a00; }
+.nav-links {
+  margin-left: auto;
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: .85;
+  transition: opacity .15s;
+}
+.nav-links a:hover { opacity: 1; }
+.nav-icon { font-size: 20px; color: white; }
+
+/* ── SUBNAV ──────────────────────────────────────────────────────── */
+.subnav {
+  background: var(--az-mid);
+  padding: 0 24px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  height: 36px;
+}
+.subnav-label { color: #aaa; font-size: 11px; font-weight: 500; margin-right: 4px; }
+.step-pill {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.25);
+  color: rgba(255,255,255,.55);
+  padding: 3px 14px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  letter-spacing: .3px;
+}
+.step-pill:hover { background: rgba(255,255,255,.08); color: white; }
+.step-pill.active {
+  background: var(--az-orange);
+  border-color: var(--az-orange);
+  color: #111;
+}
+
+/* ── BREADCRUMB ──────────────────────────────────────────────────── */
+.breadcrumb {
+  font-size: 12px;
+  color: var(--az-muted);
+  padding: 10px 24px 0;
+  max-width: 940px;
+  margin: 0 auto;
+}
+.breadcrumb a { color: var(--az-link); text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; color: var(--az-red); }
+.breadcrumb span { margin: 0 5px; color: #bbb; }
+
+/* ── PAGE WRAPPER ────────────────────────────────────────────────── */
+.page { display: none; max-width: 940px; margin: 0 auto; padding: 14px 24px 48px; animation: fadeIn .25s ease; }
+.page.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── CARD ────────────────────────────────────────────────────────── */
+.card {
+  background: var(--az-surface);
+  border: 1px solid var(--az-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.card-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--az-border);
+  color: var(--az-text);
+}
+
+/* ══════════════════════════════════════════
+   SCREEN 1 — MEMBERSHIP PAGE
+══════════════════════════════════════════ */
+
+/* Prime header bar */
+.prime-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--az-border);
+}
+.prime-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.prime-badge {
+  background: linear-gradient(135deg, var(--prime-dark) 0%, #0066b3 100%);
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+.prime-badge span {
+  display: block;
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  opacity: .75;
+  margin-top: 1px;
+}
+.prime-status-pill {
+  background: var(--az-green-bg);
+  color: var(--az-green);
+  border: 1px solid #b2dfd3;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--az-green); }
+
+/* Membership detail grid */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--az-border);
+  border: 1px solid var(--az-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.detail-cell {
+  background: #FAFBFB;
+  padding: 14px 16px;
+}
+.detail-cell label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--az-muted);
+  margin-bottom: 5px;
+}
+.detail-cell value {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--az-text);
+}
+.detail-cell value.highlight { color: var(--az-link); }
+
+/* Benefits row */
+.benefits-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.benefit-tag {
+  background: #F0F7FF;
+  border: 1px solid #C8DEFF;
+  color: var(--prime-dark);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.benefit-tag .e { font-size: 14px; }
+
+/* Actions */
+.actions-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.btn-yellow {
+  background: linear-gradient(180deg, #FFD814 0%, #F6C000 100%);
+  border: 1px solid #B8970B;
+  color: #111;
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 8px;
+  transition: all .15s;
+}
+.btn-yellow:hover { background: linear-gradient(180deg, #F6C000 0%, #E5B000 100%); }
+
+.btn-outline {
+  background: white;
+  border: 1px solid #aaa;
+  color: var(--az-text);
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 9px 18px;
+  border-radius: 8px;
+  transition: all .15s;
+}
+.btn-outline:hover { background: #f5f5f5; border-color: #888; }
+
+/* Cancel CTA block — the key design change */
+.cancel-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--az-red-bg);
+  border: 1.5px solid #F5C6C6;
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+.cancel-block-copy { flex: 1; min-width: 200px; }
+.cancel-block-copy h4 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.cancel-block-copy p { font-size: 12.5px; color: var(--az-muted); }
+
+.btn-cancel-red {
+  background: var(--az-red);
+  border: 1px solid #8B1E04;
+  color: white;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 11px 22px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transition: all .15s;
+  box-shadow: 0 2px 8px rgba(177,39,4,.25);
+}
+.btn-cancel-red:hover { background: #8B1E04; box-shadow: 0 3px 12px rgba(177,39,4,.35); transform: translateY(-1px); }
+.btn-cancel-red:active { transform: translateY(0); }
+
+/* Design note */
+.note {
+  margin-top: 14px;
+  background: #FFFBE6;
+  border: 1px solid #F5D060;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #6B4C00;
+  display: flex;
+  gap: 8px;
+  line-height: 1.5;
+}
+.note-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+/* ══════════════════════════════════════════
+   SCREEN 2 — BEFORE YOU GO
+══════════════════════════════════════════ */
+
+/* Progress stepper */
+.stepper {
+  display: flex;
+  align-items: center;
+  margin-bottom: 28px;
+}
+.st-item { display: flex; align-items: center; gap: 8px; }
+.st-circle {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--az-border);
+  background: white;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--az-muted);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.st-circle.done { background: var(--az-green); border-color: var(--az-green); color: white; }
+.st-circle.now  { background: var(--az-navy);  border-color: var(--az-navy);  color: white; }
+.st-label { font-size: 12px; font-weight: 500; color: var(--az-muted); white-space: nowrap; }
+.st-label.now { color: var(--az-text); font-weight: 700; }
+.st-line { flex: 1; height: 2px; background: var(--az-border); margin: 0 10px; }
+.st-line.done { background: var(--az-green); }
+
+/* Two-column benefits + offer */
+.retention-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+.retention-header h2 { font-size: 20px; font-weight: 800; margin-bottom: 5px; }
+.retention-header p  { color: var(--az-muted); font-size: 14px; }
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+/* Benefits panel */
+.panel {
+  border: 1.5px solid var(--az-border);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: #FAFBFB;
+}
+.panel-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--az-muted);
+  margin-bottom: 14px;
+}
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--az-border);
+  font-size: 13px;
+  font-weight: 500;
+}
+.benefit-item:last-child { border-bottom: none; }
+.benefit-item .bi-icon { font-size: 20px; width: 28px; text-align: center; }
+.benefit-item .bi-text { flex: 1; }
+.benefit-item .bi-sub { font-size: 11px; color: var(--az-muted); font-weight: 400; }
+
+/* Offer panel */
+.offer-panel {
+  border: 2px solid var(--az-orange);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: #FFFDF5;
+  position: relative;
+  overflow: hidden;
+}
+.offer-panel::before {
+  content: '';
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 80px; height: 80px;
+  background: rgba(255,153,0,.08);
+  border-radius: 50%;
+}
+.offer-badge {
+  display: inline-block;
+  background: var(--az-orange);
+  color: #111;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.offer-star { font-size: 38px; margin-bottom: 8px; display: block; }
+.offer-headline { font-size: 17px; font-weight: 800; margin-bottom: 5px; }
+.offer-sub { font-size: 12.5px; color: var(--az-muted); line-height: 1.5; }
+.offer-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #FFF0CC;
+  border: 1px solid #F5C840;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #8B5A00;
+  padding: 4px 12px;
+  margin-top: 10px;
+}
+
+/* Separator */
+.or-sep {
+  text-align: center;
+  font-size: 12px;
+  color: var(--az-muted);
+  font-weight: 600;
+  margin: 6px 0 18px;
+  position: relative;
+}
+.or-sep::before, .or-sep::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 46%;
+  height: 1px;
+  background: var(--az-border);
+}
+.or-sep::before { left: 0; }
+.or-sep::after  { right: 0; }
+
+/* Action buttons row */
+.action-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.btn-keep {
+  background: linear-gradient(180deg, #FFD814 0%, #F6C000 100%);
+  border: 1px solid #B8970B;
+  color: #111;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 13px;
+  border-radius: 8px;
+  text-align: center;
+  transition: all .15s;
+}
+.btn-keep:hover { background: linear-gradient(180deg, #F6C000 0%, #E5B000 100%); }
+
+.btn-skip-cancel {
+  background: white;
+  border: 2px solid var(--az-red);
+  color: var(--az-red);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 13px;
+  border-radius: 8px;
+  text-align: center;
+  transition: all .2s;
+}
+.btn-skip-cancel:hover {
+  background: var(--az-red);
+  color: white;
+}
+
+/* ══════════════════════════════════════════
+   SCREEN 3 — CONFIRMED
+══════════════════════════════════════════ */
+.confirm-hero {
+  text-align: center;
+  padding: 32px 24px 28px;
+  border-bottom: 1px solid var(--az-border);
+  margin-bottom: 26px;
+}
+.checkmark-ring {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00B37E, var(--az-green));
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px;
+  font-size: 38px;
+  color: white;
+  box-shadow: 0 6px 24px rgba(6,125,98,.30);
+  animation: pop .45s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes pop {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.confirm-hero h1 { font-size: 22px; font-weight: 800; color: var(--az-green); margin-bottom: 7px; }
+.confirm-hero p  { font-size: 14px; color: var(--az-muted); max-width: 380px; margin: 0 auto; }
+
+/* Status rows */
+.status-list { margin-bottom: 22px; }
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--az-border);
+  gap: 12px;
+}
+.status-row:last-child { border-bottom: none; }
+.sr-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--az-muted);
+  font-size: 13.5px;
+}
+.sr-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.sr-right { font-size: 13.5px; font-weight: 700; text-align: right; }
+
+.pill-green {
+  background: var(--az-green-bg);
+  color: var(--az-green);
+  border: 1px solid #A8DDD0;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 20px;
+}
+.pill-red {
+  background: var(--az-red-bg);
+  color: var(--az-red);
+  border: 1px solid #F5C6C6;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 20px;
+}
+
+/* Email banner */
+.email-banner {
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.email-banner .eb-icon { font-size: 26px; flex-shrink: 0; }
+.email-banner p { font-size: 13px; color: #1E40AF; line-height: 1.5; }
+.email-banner strong { color: #1E3A8A; }
+
+/* Remaining benefits strip */
+.remaining-strip {
+  border: 1px solid var(--az-border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  background: #FAFBFB;
+}
+.remaining-strip h4 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--az-muted);
+  margin-bottom: 12px;
+}
+.rem-icons {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.rem-item { text-align: center; }
+.rem-item .ri-icon { font-size: 26px; margin-bottom: 4px; }
+.rem-item .ri-name { font-size: 11px; font-weight: 600; color: var(--az-text); }
+
+/* Post-action buttons */
+.post-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-home {
+  background: linear-gradient(180deg, #FFD814 0%, #F6C000 100%);
+  border: 1px solid #B8970B;
+  color: #111;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 11px 22px;
+  border-radius: 8px;
+  transition: all .15s;
+}
+.btn-home:hover { background: linear-gradient(180deg, #F6C000 0%, #E5B000 100%); }
+
+.btn-text {
+  background: transparent;
+  border: 1px solid var(--az-border);
+  color: var(--az-link);
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 11px 18px;
+  border-radius: 8px;
+  transition: all .15s;
+}
+.btn-text:hover { background: #f0f7f7; border-color: var(--az-link); }
+
+/* ── FOOTER ──────────────────────────────────────────────────────── */
+footer {
+  background: #37475A;
+  color: #ccc;
+  text-align: center;
+  padding: 18px;
+  font-size: 12px;
+  margin-top: 32px;
+  line-height: 1.7;
+}
+footer strong { color: white; }
+
+/* ── RESPONSIVE ──────────────────────────────────────────────────── */
+@media (max-width: 660px) {
+  .detail-grid { grid-template-columns: 1fr 1fr; }
+  .two-col     { grid-template-columns: 1fr; }
+  .action-pair { grid-template-columns: 1fr; }
+  .topnav-search { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── TOP NAV ────────────────────────────────────────────────────── -->
+<nav class="topnav">
+  <div class="logo">amazon<span>.</span><sub>in</sub></div>
+  <div class="topnav-search">
+    <input type="text" placeholder="Search Amazon.in…">
+    <button>🔍</button>
+  </div>
+  <div class="nav-links">
+    <a href="#">Hello, Aayush</a>
+    <a href="#">Returns &amp; Orders</a>
+    <span class="nav-icon">🛒</span>
+  </div>
+</nav>
+
+<!-- ── PROTOTYPE SWITCHER ─────────────────────────────────────────── -->
+<div class="subnav">
+  <span class="subnav-label">SCREENS →</span>
+  <button class="step-pill active" onclick="go(1,this)">1 · Membership Page</button>
+  <button class="step-pill" onclick="go(2,this)">2 · Before You Go</button>
+  <button class="step-pill" onclick="go(3,this)">3 · Confirmed</button>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 1 — YOUR PRIME MEMBERSHIP
+══════════════════════════════════════════════ -->
+<div class="page active" id="pg1">
+  <div class="breadcrumb">
+    <a href="#">Account</a><span>›</span><a href="#">Prime Membership</a><span>›</span>Manage Membership
+  </div>
+
+  <br>
+
+  <div class="card">
+    <div class="card-title">Your Amazon Prime Membership</div>
+
+    <!-- Prime brand + status -->
+    <div class="prime-bar">
+      <div class="prime-brand">
+        <div class="prime-badge">
+          PRIME
+          <span>MEMBERSHIP</span>
+        </div>
+        <div>
+          <div class="prime-status-pill"><div class="dot"></div> Active</div>
+          <div style="font-size:11.5px;color:var(--az-muted);margin-top:4px;">Annual Plan · ₹1,499 / year</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail grid -->
+    <div class="detail-grid">
+      <div class="detail-cell">
+        <label>Member Since</label>
+        <value>March 14, 2023</value>
+      </div>
+      <div class="detail-cell">
+        <label>Next Billing</label>
+        <value class="highlight">Apr 14, 2026</value>
+      </div>
+      <div class="detail-cell">
+        <label>Annual Charge</label>
+        <value>₹1,499</value>
+      </div>
+      <div class="detail-cell">
+        <label>Payment</label>
+        <value>Axis ···· 4821</value>
+      </div>
+    </div>
+
+    <!-- Benefits -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--az-muted);margin-bottom:9px;">Your Benefits</div>
+    <div class="benefits-row">
+      <div class="benefit-tag"><span class="e">📦</span> Free Fast Delivery</div>
+      <div class="benefit-tag"><span class="e">🎬</span> Prime Video</div>
+      <div class="benefit-tag"><span class="e">🎵</span> Prime Music</div>
+      <div class="benefit-tag"><span class="e">📖</span> Prime Reading</div>
+      <div class="benefit-tag"><span class="e">💰</span> Exclusive Deals</div>
+      <div class="benefit-tag"><span class="e">🎮</span> Prime Gaming</div>
+    </div>
+
+    <!-- Other actions -->
+    <div class="actions-row">
+      <button class="btn-yellow">Update Payment Method</button>
+      <button class="btn-outline">Switch to Monthly Plan</button>
+    </div>
+
+    <!-- ★ KEY: Direct cancel block -->
+    <div class="cancel-block">
+      <div class="cancel-block-copy">
+        <h4>Want to end your membership?</h4>
+        <p>You can cancel anytime. Benefits stay active until Apr 14, 2026 — no partial refunds on annual plans.</p>
+      </div>
+      <button class="btn-cancel-red" onclick="go(2,document.querySelectorAll('.step-pill')[1])">
+        Cancel Prime Membership
+      </button>
+    </div>
+
+    <div class="note">
+      <span class="note-icon">📌</span>
+      <div><strong>Design note (Prototype 1):</strong> The "Cancel Prime Membership" button is placed <em>directly on the membership page</em> — no buried "Manage Membership" menus. Label matches exact user-expected wording from interviews. Visually separated but immediately accessible.</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 2 — BEFORE YOU CANCEL
+══════════════════════════════════════════════ -->
+<div class="page" id="pg2">
+  <div class="breadcrumb">
+    <a href="#" onclick="go(1,document.querySelectorAll('.step-pill')[0]);return false">Account</a><span>›</span>
+    <a href="#" onclick="go(1,document.querySelectorAll('.step-pill')[0]);return false">Prime Membership</a><span>›</span>
+    Cancel
+  </div>
+
+  <br>
+
+  <div class="card">
+
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="st-item">
+        <div class="st-circle done">✓</div>
+        <span class="st-label">Membership</span>
+      </div>
+      <div class="st-line done"></div>
+      <div class="st-item">
+        <div class="st-circle now">2</div>
+        <span class="st-label now">Review &amp; Decide</span>
+      </div>
+      <div class="st-line"></div>
+      <div class="st-item">
+        <div class="st-circle">3</div>
+        <span class="st-label">Confirmation</span>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <div class="retention-header">
+      <h2>Before you cancel, here's what you'll lose</h2>
+      <p>Everything on one screen — no more back-and-forth. Choose below.</p>
+    </div>
+
+    <!-- Two column: benefits + offer -->
+    <div class="two-col">
+
+      <!-- Benefits panel -->
+      <div class="panel">
+        <div class="panel-title">Your Prime Benefits</div>
+        <div class="benefit-item">
+          <span class="bi-icon">📦</span>
+          <div class="bi-text">
+            <div>Free Fast Delivery</div>
+            <div class="bi-sub">Same-day &amp; next-day on 1M+ items</div>
+          </div>
+        </div>
+        <div class="benefit-item">
+          <span class="bi-icon">🎬</span>
+          <div class="bi-text">
+            <div>Prime Video</div>
+            <div class="bi-sub">Unlimited streaming, Amazon Originals</div>
+          </div>
+        </div>
+        <div class="benefit-item">
+          <span class="bi-icon">🎵</span>
+          <div class="bi-text">
+            <div>Prime Music</div>
+            <div class="bi-sub">100M+ songs, ad-free</div>
+          </div>
+        </div>
+        <div class="benefit-item">
+          <span class="bi-icon">💰</span>
+          <div class="bi-text">
+            <div>Exclusive Deals</div>
+            <div class="bi-sub">Early access to Lightning Deals</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Offer panel -->
+      <div class="offer-panel">
+        <div class="offer-badge">Exclusive Offer For You</div>
+        <span class="offer-star">⭐</span>
+        <div class="offer-headline">Get 1 Extra Month Free</div>
+        <div class="offer-sub">Stay with Prime and we'll extend your membership by one month at no charge — that's 13 months for the price of 12.</div>
+        <div class="offer-tag">🎁 Only available today</div>
+      </div>
+    </div>
+
+    <div class="or-sep">or choose one of the following</div>
+
+    <!-- Two action buttons -->
+    <div class="action-pair">
+      <button class="btn-keep" onclick="go(1,document.querySelectorAll('.step-pill')[0])">
+        ⭐ Keep My Prime Membership
+      </button>
+      <button class="btn-skip-cancel" onclick="go(3,document.querySelectorAll('.step-pill')[2])">
+        Skip Offer &amp; Cancel Membership
+      </button>
+    </div>
+
+    <div class="note" style="margin-top:18px;">
+      <span class="note-icon">📌</span>
+      <div><strong>Design note (Prototype 2):</strong> All retention content — benefits list and exclusive offer — is shown on <em>one screen</em> instead of sequential prompts. Two clearly-labelled buttons, no deceptive wording. The progress bar shows where the user is in the flow at all times.</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 3 — CANCELLATION CONFIRMED
+══════════════════════════════════════════════ -->
+<div class="page" id="pg3">
+  <div class="breadcrumb">
+    <a href="#" onclick="go(1,document.querySelectorAll('.step-pill')[0]);return false">Account</a><span>›</span>
+    Prime Membership<span>›</span>Cancellation Confirmed
+  </div>
+
+  <br>
+
+  <div class="card">
+
+    <!-- Stepper — all done -->
+    <div class="stepper">
+      <div class="st-item">
+        <div class="st-circle done">✓</div>
+        <span class="st-label">Membership</span>
+      </div>
+      <div class="st-line done"></div>
+      <div class="st-item">
+        <div class="st-circle done">✓</div>
+        <span class="st-label">Review &amp; Decide</span>
+      </div>
+      <div class="st-line done"></div>
+      <div class="st-item">
+        <div class="st-circle done">✓</div>
+        <span class="st-label now">Confirmed</span>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="confirm-hero">
+      <div class="checkmark-ring">✓</div>
+      <h1>Cancellation Complete</h1>
+      <p>Your Prime membership has been cancelled. No further charges will be made to your account.</p>
+    </div>
+
+    <!-- Status list -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--az-muted);margin-bottom:12px;">Cancellation Summary</div>
+    <div class="status-list">
+      <div class="status-row">
+        <div class="sr-left"><span class="sr-icon">🔄</span> Auto-Renewal</div>
+        <div class="sr-right"><span class="pill-red">OFF — Disabled</span></div>
+      </div>
+      <div class="status-row">
+        <div class="sr-left"><span class="sr-icon">✅</span> Cancellation Status</div>
+        <div class="sr-right"><span class="pill-green">Confirmed</span></div>
+      </div>
+      <div class="status-row">
+        <div class="sr-left"><span class="sr-icon">📅</span> Benefits Active Until</div>
+        <div class="sr-right"><strong>April 14, 2026</strong></div>
+      </div>
+      <div class="status-row">
+        <div class="sr-left"><span class="sr-icon">💳</span> Refund</div>
+        <div class="sr-right" style="font-weight:500;color:var(--az-muted);">Not applicable (annual plan)</div>
+      </div>
+      <div class="status-row">
+        <div class="sr-left"><span class="sr-icon">🆔</span> Confirmation ID</div>
+        <div class="sr-right" style="font-family:monospace;font-size:12.5px;letter-spacing:.5px;">AMZP-2026-83471-IN</div>
+      </div>
+    </div>
+
+    <!-- Email notice -->
+    <div class="email-banner">
+      <span class="eb-icon">📧</span>
+      <p>A confirmation email has been sent to <strong>a***a@gmail.com</strong> with your cancellation ID and benefit end date. Save it for your records.</p>
+    </div>
+
+    <!-- Remaining access strip -->
+    <div class="remaining-strip">
+      <h4>You still have access to these until Apr 14, 2026</h4>
+      <div class="rem-icons">
+        <div class="rem-item">
+          <div class="ri-icon">📦</div>
+          <div class="ri-name">Delivery</div>
+        </div>
+        <div class="rem-item">
+          <div class="ri-icon">🎬</div>
+          <div class="ri-name">Video</div>
+        </div>
+        <div class="rem-item">
+          <div class="ri-icon">🎵</div>
+          <div class="ri-name">Music</div>
+        </div>
+        <div class="rem-item">
+          <div class="ri-icon">📖</div>
+          <div class="ri-name">Reading</div>
+        </div>
+        <div class="rem-item">
+          <div class="ri-icon">🎮</div>
+          <div class="ri-name">Gaming</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Post actions -->
+    <div class="post-btns">
+      <button class="btn-home" onclick="go(1,document.querySelectorAll('.step-pill')[0])">Go to Amazon Home</button>
+      <button class="btn-text">View Orders</button>
+      <button class="btn-text" onclick="go(1,document.querySelectorAll('.step-pill')[0])">Rejoin Prime</button>
+    </div>
+
+    <div class="note" style="margin-top:20px;">
+      <span class="note-icon">📌</span>
+      <div><strong>Design note (Prototype 3):</strong> The confirmation screen explicitly shows: auto-renewal OFF, exact benefit end date, confirmation ID, and a remaining-access summary — eliminating the post-cancellation anxiety reported by participants. All critical info is visible at a glance, reducing the gulf of evaluation (Norman).</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────── -->
+<footer>
+  <strong>CS6750 Human–Computer Interaction · Individual Project</strong><br>
+  Aayush Bajoria · abajoria7@gatech.edu · Amazon Prime Cancellation Redesign — Final Prototype
+</footer>
+
+<script>
+  function go(n, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.step-pill').forEach(b => b.classList.remove('active'));
+    document.getElementById('pg' + n).classList.add('active');
+    if (btn) btn.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
